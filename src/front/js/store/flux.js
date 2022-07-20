@@ -1,6 +1,7 @@
 const getState = ({ getStore, getActions, setStore }) => {
   return {
     store: {
+      private: undefined,
       message: null,
       demo: [
         {
@@ -34,6 +35,44 @@ const getState = ({ getStore, getActions, setStore }) => {
           return false;
         }
         return true;
+      },
+      login: async (requestBody) => {
+        const response = await fetch(`${process.env.BACKEND_URL}/api/token`, {
+          method: "POST",
+          body: JSON.stringify(requestBody),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) throw Error("Hubo un problema con el login");
+        if (response.status === 401) {
+          throw "password o usuario incorrecto";
+        } else if (response.status === 400) {
+          throw "revise el payload de su solicitud...";
+        }
+        const data = await response.json();
+        localStorage.setItem("jwt-token", data.token);
+        return true;
+      },
+      private: async () => {
+        const token = localStorage.getItem("jwt-token");
+
+        const resp = await fetch(`${process.env.BACKEND_URL}/api/protected`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+        });
+        if (!resp.ok) throw Error("There was a problem in the login request");
+        else if (resp.status === 403) {
+          throw Error("Missing or invalid token");
+        }
+
+        const data = await resp.json();
+        console.log("This is the data you requested", data);
+        setStore({ private: data });
+        return data;
       },
       getMessage: async () => {
         try {
